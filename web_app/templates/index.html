@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Future AQI Prediction</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Predict Future AQI</h1>
+        <form id="aqi-form" class="mt-3">
+            <div class="form-group">
+                <label for="selected_date">Select a future date:</label>
+                <input type="date" class="form-control" id="selected_date" name="selected_date" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Predict AQI</button>
+        </form>
+        <div id="result" class="mt-4"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#aqi-form').on('submit', function(e) {
+                e.preventDefault();
+                let selected_date = $('#selected_date').val();
+                $.ajax({
+                    type: 'POST',
+                    url: '/predict',
+                    data: { selected_date: selected_date },
+                    success: function(response) {
+                        $('#result').html('<h3>Predicted AQI for ' + selected_date + ' is: ' + response.aqi_prediction + '</h3>');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
