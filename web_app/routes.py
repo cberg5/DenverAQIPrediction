@@ -6,6 +6,7 @@ from datetime import datetime
 import io
 import os
 import json
+import base64
 from google.oauth2 import service_account
 from google.cloud import storage
 
@@ -19,11 +20,24 @@ historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Updated path
 
 # Function to download a file from GCS
 def download_file_from_gcs(bucket_name, file_path):
-    # Read the credentials from the environment variable
-    credentials_info = json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
-    credentials = service_account.Credentials.from_service_account_info(credentials_info)
-    client = storage.Client(credentials=credentials)  # Use credentials to initialize the client
+    # Check if the credentials are in base64 and decode if necessary
+    credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
+    try:
+        # If the credentials are base64-encoded, decode them
+        if credentials_json.startswith('{'):
+            credentials_info = json.loads(credentials_json)
+        else:
+            credentials_info = json.loads(base64.b64decode(credentials_json).decode('utf-8'))
+    except Exception as e:
+        print(f"Error decoding credentials: {e}")
+        raise
+
+    # Load credentials and initialize the GCS client
+    credentials = service_account.Credentials.from_service_account_info(credentials_info)
+    client = storage.Client(credentials=credentials)
+
+    # Fetch file from GCS
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(file_path)
     data = blob.download_as_string()
