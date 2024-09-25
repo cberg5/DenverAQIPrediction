@@ -20,7 +20,7 @@ historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Updated path
 # Function to download a file from GCS
 def download_file_from_gcs(bucket_name, file_path):
     # Read the credentials from the environment variable
-    credentials_info = json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON'))
+    credentials_info = json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
     credentials = service_account.Credentials.from_service_account_info(credentials_info)
     client = storage.Client(credentials=credentials)  # Use credentials to initialize the client
 
