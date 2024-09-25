@@ -3,8 +3,11 @@ import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from google.cloud import storage
 import io
+import os
+import json
+from google.oauth2 import service_account
+from google.cloud import storage
 
 # Create the blueprint for the routes
 main = Blueprint('main', __name__)
@@ -16,7 +19,11 @@ historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Updated path
 
 # Function to download a file from GCS
 def download_file_from_gcs(bucket_name, file_path):
-    client = storage.Client()
+    # Read the credentials from the environment variable
+    credentials_info = json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON'))
+    credentials = service_account.Credentials.from_service_account_info(credentials_info)
+    client = storage.Client(credentials=credentials)  # Use credentials to initialize the client
+
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(file_path)
     data = blob.download_as_string()
