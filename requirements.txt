@@ -9,3 +9,5 @@ seaborn==0.13.2
 protobuf~=5.28.2
 numpy~=2.0.2
 gunicorn
+google-auth
+google-cloud-storage
