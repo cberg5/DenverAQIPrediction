@@ -3,21 +3,42 @@ import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from google.cloud import storage
+import io
 
 # Create the blueprint for the routes
 main = Blueprint('main', __name__)
 
-# Load the pre-trained model
-model = joblib.load('/Users/cjbergin/PycharmProjects/DenverAQIPrediction/models/trained_model.pkl')
+# Define bucket name and paths for GCS
+bucket_name = 'weather-aqi-data-storage'
+model_file_path = 'models/trained_model.pkl'
+historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Updated path
 
-# Load historical data
-historical_data = pd.read_csv('/Users/cjbergin/PycharmProjects/DenverAQIPrediction/data/merged_weather_aqi_2014_2024.csv')
+# Function to download a file from GCS
+def download_file_from_gcs(bucket_name, file_path):
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(file_path)
+    data = blob.download_as_string()
+    return data
 
-# Ensure the 'datetime' column is of datetime type
-historical_data['datetime'] = pd.to_datetime(historical_data['datetime'])
+# Load the pre-trained model from GCS
+def load_model_from_gcs(bucket_name, model_file_path):
+    model_data = download_file_from_gcs(bucket_name, model_file_path)
+    model = joblib.load(io.BytesIO(model_data))
+    return model
 
-# Create the 'day_of_year' column based on the 'datetime' column
-historical_data['day_of_year'] = historical_data['datetime'].dt.dayofyear
+# Load historical data from GCS
+def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
+    data = download_file_from_gcs(bucket_name, historical_data_file_path)
+    historical_data = pd.read_csv(io.StringIO(data.decode('utf-8')))
+    historical_data['datetime'] = pd.to_datetime(historical_data['datetime'])
+    historical_data['day_of_year'] = historical_data['datetime'].dt.dayofyear
+    return historical_data
+
+# Load the model and historical data
+model = load_model_from_gcs(bucket_name, model_file_path)
+historical_data = load_historical_data_from_gcs(bucket_name, historical_data_file_path)
 
 # Function to prepare data for a given date
 def prepare_input_data(selected_date):

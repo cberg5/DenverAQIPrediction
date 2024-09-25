@@ -5,10 +5,30 @@ from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 import joblib
+from google.cloud import storage
+import io
+
+# Function to load data from Google Cloud Storage
+def load_data_from_gcs(bucket_name, file_path):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(file_path)
+    data = blob.download_as_string()
+    return pd.read_csv(io.StringIO(data.decode('utf-8')))
+
+# Function to save model to GCS
+def save_model_to_gcs(model, bucket_name, file_path):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(file_path)
+    # Serialize the model and upload to GCS
+    model_data = io.BytesIO()
+    joblib.dump(model, model_data)
+    model_data.seek(0)
+    blob.upload_from_file(model_data, content_type='application/octet-stream')
 
 # Step 1: Prepare Data
-def prepare_data(data_path):
-    df = pd.read_csv(data_path)
+def prepare_data(df):
     df['datetime'] = pd.to_datetime(df['datetime'])
 
     # Create 'season' feature
@@ -91,12 +111,15 @@ def evaluate_model(model, X_test, y_test):
 
 
 if __name__ == "__main__":
-    data_path = '/Users/cjbergin/PycharmProjects/DenverAQIPrediction/data/merged_weather_aqi_2014_2024.csv'
+    bucket_name = 'weather-aqi-data-storage'
+    data_path = 'merged_weather_aqi_2014_2024.csv'
+    model_save_path = 'models/trained_model.pkl'
+
+    # Load data from GCS
+    df = load_data_from_gcs(bucket_name, data_path)
 
     # Prepare and split data
-    X, y = prepare_data(data_path)
-
-    # Split unscaled data for tree-based models
+    X, y = prepare_data(df)
     X_train, X_test, y_train, y_test = split_data(X, y)
 
     # Train Random Forest (using unscaled data)
@@ -107,6 +130,6 @@ if __name__ == "__main__":
     # Evaluate Random Forest Model
     evaluate_model(best_rf_model, X_test, y_test)
 
-    # Save the trained model
-    joblib.dump(best_rf_model, '/Users/cjbergin/PycharmProjects/DenverAQIPrediction/models/trained_model.pkl')
-    print("Model saved successfully as 'model/trained_model.pkl'.")
+    # Save the trained model to GCS
+    save_model_to_gcs(best_rf_model, bucket_name, model_save_path)
+    print(f"Model saved successfully to 'gs://{bucket_name}/{model_save_path}'.")

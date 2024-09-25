@@ -2,10 +2,21 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
+from google.cloud import storage
+from io import StringIO
 
-def explore_data(data_path):
-    # Load the merged dataset
-    df = pd.read_csv(data_path)
+# Function to load data from Google Cloud Storage
+def load_data_from_gcs(bucket_name, file_name):
+    client = storage.Client()  # This assumes your GOOGLE_APPLICATION_CREDENTIALS are set
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(file_name)
+    data = blob.download_as_string()  # Download the file as a string
+    df = pd.read_csv(StringIO(data.decode('utf-8')))  # Read the CSV data into a pandas DataFrame
+    return df
+
+def explore_data(bucket_name, file_name):
+    # Load the merged dataset from GCS
+    df = load_data_from_gcs(bucket_name, file_name)
 
     # Ensure 'datetime' is a datetime object and exists in the DataFrame
     if 'datetime' not in df.columns:
@@ -113,8 +124,9 @@ def explore_data(data_path):
     plt.show()
 
 if __name__ == "__main__":
-    # Define the file path
-    data_path = '/Users/cjbergin/PycharmProjects/DenverAQIPrediction/data/merged_weather_aqi_2014_2024.csv'
+    # Specify your Google Cloud Storage bucket and file
+    bucket_name = 'weather-aqi-data-storage'  # Replace with your GCS bucket name
+    file_name = 'merged_weather_aqi_2014_2024.csv'  # The dataset file name in GCS
 
     # Perform exploratory data analysis
-    explore_data(data_path)
+    explore_data(bucket_name, file_name)
