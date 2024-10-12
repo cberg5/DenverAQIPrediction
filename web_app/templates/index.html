@@ -20,20 +20,34 @@
 
         <!-- New buttons for downloading data -->
         <div class="mt-5">
-            <h2>Historical Data Download</h2>
+            <h2>Historical Data Explorer</h2>
             <button id="download-aqi-data" class="btn btn-secondary">Download AQI Data</button>
             <button id="download-weather-data" class="btn btn-secondary">Download Denver Weather Data</button>
         </div>
 
-        <!-- Divs to display the prediction result -->
-        <div id="aqi-data" class="mt-4"></div>
-        <div id="weather-data" class="mt-4"></div>
+        <!-- Buttons to trigger visualizations -->
+        <div class="mt-5">
+            <h2>Visualizations</h2>
+            <button id="show-scatter-plot" class="btn btn-info">Show Scatter Plots</button>
+            <button id="show-aqi-time-plot" class="btn btn-info">Show AQI Over Time</button>
+        </div>
+
+        <!-- Divs to display the visualizations -->
+        <div id="scatter-plot" class="mt-4">
+            <h4>Scatter Plot (AQI vs Variables)</h4>
+            <img id="scatter-plot-img" style="max-width: 100%; display: none;" />
+        </div>
+
+        <div id="aqi-time-plot" class="mt-4">
+            <h4>AQI Over Time</h4>
+            <img id="aqi-time-plot-img" style="max-width: 100%; display: none;" />
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Prediction form submission
+            // Prediction form
             $('#aqi-form').on('submit', function(e) {
                 e.preventDefault();
                 let selected_date = $('#selected_date').val();
@@ -55,6 +69,16 @@
             // Open Weather data CSV in a new tab
             $('#download-weather-data').on('click', function() {
                 window.open('/download_weather_data', '_blank');
+            });
+
+            // Load scatter plot
+            $('#show-scatter-plot').on('click', function() {
+                $('#scatter-plot-img').attr('src', '/plot_scatter').show();
+            });
+
+            // Load AQI over time plot
+            $('#show-aqi-time-plot').on('click', function() {
+                $('#aqi-time-plot-img').attr('src', '/plot_aqi_over_time').show();
             });
         });
     </script>

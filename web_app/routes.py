@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, jsonify, send_file
 import joblib
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 from datetime import datetime
 import io
 import os
@@ -171,3 +173,87 @@ def download_weather_data():
     except Exception as e:
         print(f"Error downloading weather data: {e}")
         return jsonify({"error": "Failed to download weather data"}), 500
+
+
+# Route to plot scatter plots and return the image
+@main.route('/plot_scatter', methods=['GET'])
+def plot_scatter_route():
+    try:
+        df = load_csv_from_gcs(bucket_name, historical_data_file_path)
+        df['datetime'] = pd.to_datetime(df['datetime'])
+
+        # Clean non-numeric columns for plotting
+        df = clean_non_numeric(df)
+
+        # Generate scatter plots
+        img = plot_scatter(df)
+
+        return send_file(img, mimetype='image/png')
+    except Exception as e:
+        print(f"Error generating scatter plot: {e}")
+        return jsonify({"error": "Failed to generate scatter plot"}), 500
+
+
+# Route to plot AQI over time and return the image
+@main.route('/plot_aqi_over_time', methods=['GET'])
+def plot_aqi_over_time_route():
+    try:
+        df = load_csv_from_gcs(bucket_name, historical_data_file_path)
+        df['datetime'] = pd.to_datetime(df['datetime'])
+
+        # Clean non-numeric columns for plotting
+        df = clean_non_numeric(df)
+
+        # Generate AQI over time plot
+        img = plot_aqi_over_time(df)
+
+        return send_file(img, mimetype='image/png')
+    except Exception as e:
+        print(f"Error generating AQI over time plot: {e}")
+        return jsonify({"error": "Failed to generate AQI over time plot"}), 500
+
+
+# Function to clean non-numeric columns for plotting
+def clean_non_numeric(df):
+    df['AQI Value'] = pd.to_numeric(df['AQI Value'], errors='coerce')
+
+    variables_to_plot = ['temp_mean', 'humidity_mean', 'wind_speed_mean', 'pressure_mean', 'clouds_all_mean']
+    for var in variables_to_plot:
+        df[var] = pd.to_numeric(df[var], errors='coerce')
+
+    df.dropna(subset=['AQI Value'] + variables_to_plot, inplace=True)
+    return df
+
+
+# Function to plot scatter plots and return as BytesIO image
+def plot_scatter(df):
+    variables_to_plot = ['temp_mean', 'humidity_mean', 'wind_speed_mean', 'pressure_mean', 'clouds_all_mean']
+    img_stream = io.BytesIO()
+
+    for var in variables_to_plot:
+        plt.figure(figsize=(10, 6))
+        sns.regplot(x=df[var], y=df['AQI Value'], scatter_kws={'alpha': 0.3}, line_kws={"color": "red"})
+        plt.title(f'AQI vs {var}')
+        plt.xlabel(var)
+        plt.ylabel('AQI Value')
+
+        plt.savefig(img_stream, format='png')
+        img_stream.seek(0)
+
+    return img_stream
+
+
+# Function to plot AQI over time and return as BytesIO image
+def plot_aqi_over_time(df):
+    img_stream = io.BytesIO()
+
+    plt.figure(figsize=(12, 6))
+    sns.lineplot(x='datetime', y='AQI Value', data=df, color='blue')
+    plt.title('AQI Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('AQI Value')
+
+    plt.savefig(img_stream, format='png')
+    img_stream.seek(0)
+
+    return img_stream
