@@ -17,7 +17,7 @@ main = Blueprint('main', __name__)
 bucket_name = 'weather-aqi-data-storage'
 model_file_path = 'models/trained_model.pkl'
 aqi_data_file_path = 'combined_aqi_2014_2024.csv'
-weather_data_file_path = 'daily_denver_weather_2014_2024.csv'
+weather_data_file_path = 'denver_weather_2014_2024.csv'
 historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'
 
 
