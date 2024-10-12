@@ -18,6 +18,11 @@ aqi_data_file_path = 'combined_aqi_2014_2024.csv'  # AQI data file in GCS
 weather_data_file_path = 'denver_weather_2014_2024.csv'  # Denver weather data file in GCS
 historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Historical data for prediction
 
+def load_csv_from_gcs(bucket_name, file_path):
+    data = download_file_from_gcs(bucket_name, file_path)
+    df = pd.read_csv(io.StringIO(data.decode('utf-8')))
+    return df
+
 def download_file_from_gcs(bucket_name, file_path):
     # Check if the credentials are in base64 and decode if necessary
     credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
@@ -130,13 +135,23 @@ def predict():
 # Route to load AQI data from GCS
 @main.route('/load_aqi_data', methods=['GET'])
 def load_aqi_data():
-    aqi_data = load_csv_from_gcs(bucket_name, aqi_data_file_path)
-    aqi_data_json = aqi_data.head(100).to_dict(orient='records')  # Limit to 100 rows for simplicity
-    return jsonify(aqi_data_json)
+    try:
+        aqi_data = load_csv_from_gcs(bucket_name, aqi_data_file_path)
+        # Limit the data to 100 rows for simplicity
+        aqi_data_json = aqi_data.head(100).to_dict(orient='records')
+        return jsonify(aqi_data_json)
+    except Exception as e:
+        print(f"Error loading AQI data: {e}")
+        return jsonify({"error": "Failed to load AQI data"}), 500
 
 # Route to load Denver weather data from GCS
 @main.route('/load_weather_data', methods=['GET'])
 def load_weather_data():
-    weather_data = load_csv_from_gcs(bucket_name, weather_data_file_path)
-    weather_data_json = weather_data.head(100).to_dict(orient='records')  # Limit to 100 rows for simplicity
-    return jsonify(weather_data_json)
+    try:
+        weather_data = load_csv_from_gcs(bucket_name, weather_data_file_path)
+        # Limit the data to 100 rows for simplicity
+        weather_data_json = weather_data.head(100).to_dict(orient='records')
+        return jsonify(weather_data_json)
+    except Exception as e:
+        print(f"Error loading weather data: {e}")
+        return jsonify({"error": "Failed to load weather data"}), 500
