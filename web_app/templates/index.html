@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Future AQI Prediction and Data Explorer</title>
+    <title>Future AQI Prediction</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
 </head>
 <body>
@@ -18,19 +18,22 @@
         </form>
         <div id="result" class="mt-4"></div>
 
-        <h2 class="mt-5">Explore Historical Data</h2>
-        <button id="load-aqi-data" class="btn btn-secondary mt-3">Load AQI Data</button>
-        <button id="load-weather-data" class="btn btn-secondary mt-3">Load Denver Weather Data</button>
-
-        <div id="dataset-table" class="mt-4">
-            <!-- Dataset will be populated here -->
+        <!-- New buttons for loading data -->
+        <div class="mt-5">
+            <h2>Data Explorer</h2>
+            <button id="load-aqi-data" class="btn btn-secondary">Load AQI Data</button>
+            <button id="load-weather-data" class="btn btn-secondary">Load Denver Weather Data</button>
         </div>
+
+        <!-- Divs to display the loaded data -->
+        <div id="aqi-data" class="mt-4"></div>
+        <div id="weather-data" class="mt-4"></div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Predict AQI for a selected future date
+            // Prediction form
             $('#aqi-form').on('submit', function(e) {
                 e.preventDefault();
                 let selected_date = $('#selected_date').val();
@@ -44,47 +47,47 @@
                 });
             });
 
-            // Load AQI data from Google Cloud
+            // Load AQI data
             $('#load-aqi-data').on('click', function() {
                 $.ajax({
+                    type: 'GET',
                     url: '/load_aqi_data',
-                    method: 'GET',
                     success: function(data) {
-                        displayTable(data);
+                        let tableHtml = '<h4>AQI Data</h4><table class="table table-bordered"><thead><tr>';
+                        let columns = Object.keys(data[0]);
+                        columns.forEach(col => tableHtml += '<th>' + col + '</th>');
+                        tableHtml += '</tr></thead><tbody>';
+                        data.forEach(row => {
+                            tableHtml += '<tr>';
+                            columns.forEach(col => tableHtml += '<td>' + row[col] + '</td>');
+                            tableHtml += '</tr>';
+                        });
+                        tableHtml += '</tbody></table>';
+                        $('#aqi-data').html(tableHtml);
                     }
                 });
             });
 
-            // Load Denver weather data from Google Cloud
+            // Load Weather data
             $('#load-weather-data').on('click', function() {
                 $.ajax({
+                    type: 'GET',
                     url: '/load_weather_data',
-                    method: 'GET',
                     success: function(data) {
-                        displayTable(data);
+                        let tableHtml = '<h4>Denver Weather Data</h4><table class="table table-bordered"><thead><tr>';
+                        let columns = Object.keys(data[0]);
+                        columns.forEach(col => tableHtml += '<th>' + col + '</th>');
+                        tableHtml += '</tr></thead><tbody>';
+                        data.forEach(row => {
+                            tableHtml += '<tr>';
+                            columns.forEach(col => tableHtml += '<td>' + row[col] + '</td>');
+                            tableHtml += '</tr>';
+                        });
+                        tableHtml += '</tbody></table>';
+                        $('#weather-data').html(tableHtml);
                     }
                 });
             });
-
-            // Function to display the data in a table format
-            function displayTable(data) {
-                let table = '<table class="table table-bordered"><thead><tr>';
-                // Dynamically add column headers
-                for (let key in data[0]) {
-                    table += `<th>${key}</th>`;
-                }
-                table += '</tr></thead><tbody>';
-                // Dynamically add data rows
-                data.forEach(row => {
-                    table += '<tr>';
-                    for (let key in row) {
-                        table += `<td>${row[key]}</td>`;
-                    }
-                    table += '</tr>';
-                });
-                table += '</tbody></table>';
-                $('#dataset-table').html(table);
-            }
         });
     </script>
 </body>
