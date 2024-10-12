@@ -74,22 +74,33 @@
                     type: 'GET',
                     url: '/load_weather_data',
                     success: function(data) {
-                        console.log("Weather data received:", data);  // Log the data for debugging
+                        if (data && data.length > 0) {
+                            let tableHtml = '<h4>Denver Weather Data</h4><table class="table table-bordered"><thead><tr>';
+                            let columns = Object.keys(data[0]);
 
-                        let tableHtml = '<h4>Denver Weather Data</h4><table class="table table-bordered"><thead><tr>';
-                        let columns = Object.keys(data[0]);
-                        columns.forEach(col => tableHtml += '<th>' + col + '</th>');
-                        tableHtml += '</tr></thead><tbody>';
-                        data.forEach(row => {
-                            tableHtml += '<tr>';
-                            columns.forEach(col => tableHtml += '<td>' + row[col] + '</td>');
-                            tableHtml += '</tr>';
-                        });
-                        tableHtml += '</tbody></table>';
-                        $('#weather-data').html(tableHtml);
+                            // Build header
+                            columns.forEach(col => tableHtml += '<th>' + col + '</th>');
+                            tableHtml += '</tr></thead><tbody>';
+
+                            // Build rows
+                            data.forEach(row => {
+                                tableHtml += '<tr>';
+                                columns.forEach(col => {
+                                    // Check if data is null or undefined, and handle accordingly
+                                    let value = row[col] === null || row[col] === undefined ? '' : row[col];
+                                    tableHtml += '<td>' + value + '</td>';
+                                });
+                                tableHtml += '</tr>';
+                            });
+
+                            tableHtml += '</tbody></table>';
+                            $('#weather-data').html(tableHtml);
+                        } else {
+                            $('#weather-data').html('<p>No weather data available.</p>');
+                        }
                     },
                     error: function(err) {
-                        console.log("Error loading weather data:", err);
+                        console.error("Error loading weather data:", err);
                         $('#weather-data').html('<p>Error loading weather data.</p>');
                     }
                 });
