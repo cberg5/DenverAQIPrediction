@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, send_file
 import joblib
 import pandas as pd
 import numpy as np
@@ -18,10 +18,12 @@ aqi_data_file_path = 'combined_aqi_2014_2024.csv'  # AQI data file in GCS
 weather_data_file_path = 'daily_denver_weather_2014_2024.csv'  # Denver weather data file in GCS
 historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Historical data for prediction
 
+
 def load_csv_from_gcs(bucket_name, file_path):
     data = download_file_from_gcs(bucket_name, file_path)
     df = pd.read_csv(io.StringIO(data.decode('utf-8')))
     return df
+
 
 def download_file_from_gcs(bucket_name, file_path):
     # Check if the credentials are in base64 and decode if necessary
@@ -47,11 +49,13 @@ def download_file_from_gcs(bucket_name, file_path):
     data = blob.download_as_string()
     return data
 
+
 # Load the pre-trained model from GCS
 def load_model_from_gcs(bucket_name, model_file_path):
     model_data = download_file_from_gcs(bucket_name, model_file_path)
     model = joblib.load(io.BytesIO(model_data))
     return model
+
 
 # Load historical data from GCS
 def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
@@ -61,9 +65,11 @@ def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
     historical_data['day_of_year'] = historical_data['datetime'].dt.dayofyear
     return historical_data
 
+
 # Load the model and historical data
 model = load_model_from_gcs(bucket_name, model_file_path)
 historical_data = load_historical_data_from_gcs(bucket_name, historical_data_file_path)
+
 
 # Function to prepare data for a given date
 def prepare_input_data(selected_date):
@@ -115,10 +121,12 @@ def prepare_input_data(selected_date):
 
     return input_data
 
+
 # Route for home page
 @main.route('/')
 def home():
     return render_template('index.html')
+
 
 # Route to predict AQI for a selected date
 @main.route('/predict', methods=['POST'])
@@ -132,28 +140,34 @@ def predict():
 
     return jsonify({'aqi_prediction': prediction})
 
-# Route to load AQI data from GCS
-@main.route('/load_aqi_data', methods=['GET'])
-def load_aqi_data():
-    try:
-        aqi_data = load_csv_from_gcs(bucket_name, aqi_data_file_path)
-        # Limit the data to 100 rows for simplicity
-        aqi_data_json = aqi_data.head(100).to_dict(orient='records')
-        return jsonify(aqi_data_json)
-    except Exception as e:
-        print(f"Error loading AQI data: {e}")
-        return jsonify({"error": "Failed to load AQI data"}), 500
 
-# Route to load Denver weather data from GCS
-@main.route('/load_weather_data', methods=['GET'])
-def load_weather_data():
+# Route to download AQI data from GCS and return as a CSV file
+@main.route('/download_aqi_data', methods=['GET'])
+def download_aqi_data():
     try:
-        weather_data = load_csv_from_gcs(bucket_name, weather_data_file_path)
-        print(weather_data.columns)  # Log the column names for debugging
-        print(weather_data.head())  # Log the first few rows
-        # Limit the data to 100 rows for simplicity
-        weather_data_json = weather_data.head(100).to_dict(orient='records')
-        return jsonify(weather_data_json)
+        aqi_data = download_file_from_gcs(bucket_name, aqi_data_file_path)
+
+        # Create a BytesIO stream from the CSV data
+        csv_stream = io.BytesIO(aqi_data)
+
+        # Return the CSV file as a downloadable file
+        return send_file(csv_stream, mimetype='text/csv', as_attachment=True, download_name='aqi_data.csv')
     except Exception as e:
-        print(f"Error loading weather data: {e}")
-        return jsonify({"error": "Failed to load weather data"}), 500
+        print(f"Error downloading AQI data: {e}")
+        return jsonify({"error": "Failed to download AQI data"}), 500
+
+
+# Route to download Denver weather data from GCS and return as a CSV file
+@main.route('/download_weather_data', methods=['GET'])
+def download_weather_data():
+    try:
+        weather_data = download_file_from_gcs(bucket_name, weather_data_file_path)
+
+        # Create a BytesIO stream from the CSV data
+        csv_stream = io.BytesIO(weather_data)
+
+        # Return the CSV file as a downloadable file
+        return send_file(csv_stream, mimetype='text/csv', as_attachment=True, download_name='weather_data.csv')
+    except Exception as e:
+        print(f"Error downloading weather data: {e}")
+        return jsonify({"error": "Failed to download weather data"}), 500

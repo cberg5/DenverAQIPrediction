@@ -18,14 +18,14 @@
         </form>
         <div id="result" class="mt-4"></div>
 
-        <!-- New buttons for loading data -->
+        <!-- New buttons for downloading data -->
         <div class="mt-5">
-            <h2>Historical Data Explorer</h2>
-            <button id="load-aqi-data" class="btn btn-secondary">Load AQI Data</button>
-            <button id="load-weather-data" class="btn btn-secondary">Load Denver Weather Data</button>
+            <h2>Historical Data Download</h2>
+            <button id="download-aqi-data" class="btn btn-secondary">Download AQI Data</button>
+            <button id="download-weather-data" class="btn btn-secondary">Download Denver Weather Data</button>
         </div>
 
-        <!-- Divs to display the loaded data -->
+        <!-- Divs to display the prediction result -->
         <div id="aqi-data" class="mt-4"></div>
         <div id="weather-data" class="mt-4"></div>
     </div>
@@ -33,7 +33,7 @@
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Prediction form
+            // Prediction form submission
             $('#aqi-form').on('submit', function(e) {
                 e.preventDefault();
                 let selected_date = $('#selected_date').val();
@@ -47,63 +47,14 @@
                 });
             });
 
-            // Load AQI data
-            $('#load-aqi-data').on('click', function() {
-                $.ajax({
-                    type: 'GET',
-                    url: '/load_aqi_data',
-                    success: function(data) {
-                        let tableHtml = '<h4>AQI Data</h4><table class="table table-bordered"><thead><tr>';
-                        let columns = Object.keys(data[0]);
-                        columns.forEach(col => tableHtml += '<th>' + col + '</th>');
-                        tableHtml += '</tr></thead><tbody>';
-                        data.forEach(row => {
-                            tableHtml += '<tr>';
-                            columns.forEach(col => tableHtml += '<td>' + row[col] + '</td>');
-                            tableHtml += '</tr>';
-                        });
-                        tableHtml += '</tbody></table>';
-                        $('#aqi-data').html(tableHtml);
-                    }
-                });
+            // Open AQI data CSV in a new tab
+            $('#download-aqi-data').on('click', function() {
+                window.open('/download_aqi_data', '_blank');
             });
 
-            // Load Weather data
-            $('#load-weather-data').on('click', function() {
-                $.ajax({
-                    type: 'GET',
-                    url: '/load_weather_data',
-                    success: function(data) {
-                        if (data && data.length > 0) {
-                            let tableHtml = '<h4>Denver Weather Data</h4><table class="table table-bordered"><thead><tr>';
-                            let columns = Object.keys(data[0]);
-
-                            // Build header
-                            columns.forEach(col => tableHtml += '<th>' + col + '</th>');
-                            tableHtml += '</tr></thead><tbody>';
-
-                            // Build rows
-                            data.forEach(row => {
-                                tableHtml += '<tr>';
-                                columns.forEach(col => {
-                                    // Check if data is null or undefined, and handle accordingly
-                                    let value = row[col] === null || row[col] === undefined ? '' : row[col];
-                                    tableHtml += '<td>' + value + '</td>';
-                                });
-                                tableHtml += '</tr>';
-                            });
-
-                            tableHtml += '</tbody></table>';
-                            $('#weather-data').html(tableHtml);
-                        } else {
-                            $('#weather-data').html('<p>No weather data available.</p>');
-                        }
-                    },
-                    error: function(err) {
-                        console.error("Error loading weather data:", err);
-                        $('#weather-data').html('<p>Error loading weather data.</p>');
-                    }
-                });
+            // Open Weather data CSV in a new tab
+            $('#download-weather-data').on('click', function() {
+                window.open('/download_weather_data', '_blank');
             });
         });
     </script>
