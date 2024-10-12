@@ -14,7 +14,9 @@ main = Blueprint('main', __name__)
 
 bucket_name = 'weather-aqi-data-storage'
 model_file_path = 'models/trained_model.pkl'
-historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Updated path
+aqi_data_file_path = 'combined_aqi_2014_2024.csv'  # AQI data file in GCS
+weather_data_file_path = 'denver_weather_2014_2024.csv'  # Denver weather data file in GCS
+historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Historical data for prediction
 
 def download_file_from_gcs(bucket_name, file_path):
     credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
@@ -41,21 +43,17 @@ def load_model_from_gcs(bucket_name, model_file_path):
     model = joblib.load(io.BytesIO(model_data))
     return model
 
-def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
-    data = download_file_from_gcs(bucket_name, historical_data_file_path)
-    historical_data = pd.read_csv(io.StringIO(data.decode('utf-8')))
-    historical_data['datetime'] = pd.to_datetime(historical_data['datetime'])
-    historical_data['day_of_year'] = historical_data['datetime'].dt.dayofyear
-    return historical_data
+def load_csv_from_gcs(bucket_name, file_path):
+    data = download_file_from_gcs(bucket_name, file_path)
+    df = pd.read_csv(io.StringIO(data.decode('utf-8')))
+    return df
 
 model = load_model_from_gcs(bucket_name, model_file_path)
-historical_data = load_historical_data_from_gcs(bucket_name, historical_data_file_path)
+historical_data = load_csv_from_gcs(bucket_name, historical_data_file_path)
 
 def prepare_input_data(selected_date):
     date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
-
     day_of_year = date_obj.timetuple().tm_yday
-
     historical_day_data = historical_data[historical_data['day_of_year'] == day_of_year]
 
     numeric_columns = historical_day_data.select_dtypes(include=[np.number])
@@ -105,3 +103,17 @@ def predict():
     prediction = float(prediction)
 
     return jsonify({'aqi_prediction': prediction})
+
+# Route to load AQI data from GCS
+@main.route('/load_aqi_data', methods=['GET'])
+def load_aqi_data():
+    aqi_data = load_csv_from_gcs(bucket_name, aqi_data_file_path)
+    aqi_data_json = aqi_data.head(100).to_dict(orient='records')  # Limit to 100 rows for simplicity
+    return jsonify(aqi_data_json)
+
+# Route to load Denver weather data from GCS
+@main.route('/load_weather_data', methods=['GET'])
+def load_weather_data():
+    weather_data = load_csv_from_gcs(bucket_name, weather_data_file_path)
+    weather_data_json = weather_data.head(100).to_dict(orient='records')  # Limit to 100 rows for simplicity
+    return jsonify(weather_data_json)
