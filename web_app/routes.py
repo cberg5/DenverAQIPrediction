@@ -15,7 +15,7 @@ main = Blueprint('main', __name__)
 bucket_name = 'weather-aqi-data-storage'
 model_file_path = 'models/trained_model.pkl'
 aqi_data_file_path = 'combined_aqi_2014_2024.csv'  # AQI data file in GCS
-weather_data_file_path = 'denver_weather_2014_2024.csv'  # Denver weather data file in GCS
+weather_data_file_path = 'weather/denver_weather_2014_2024.csv'  # Denver weather data file in GCS
 historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Historical data for prediction
 
 def download_file_from_gcs(bucket_name, file_path):
