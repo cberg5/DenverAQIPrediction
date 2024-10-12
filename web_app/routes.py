@@ -16,9 +16,9 @@ main = Blueprint('main', __name__)
 
 bucket_name = 'weather-aqi-data-storage'
 model_file_path = 'models/trained_model.pkl'
-aqi_data_file_path = 'combined_aqi_2014_2024.csv'  # AQI data file in GCS
-weather_data_file_path = 'daily_denver_weather_2014_2024.csv'  # Denver weather data file in GCS
-historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'  # Historical data for prediction
+aqi_data_file_path = 'combined_aqi_2014_2024.csv'
+weather_data_file_path = 'daily_denver_weather_2014_2024.csv'
+historical_data_file_path = 'merged_weather_aqi_2014_2024.csv'
 
 
 def load_csv_from_gcs(bucket_name, file_path):
@@ -28,11 +28,9 @@ def load_csv_from_gcs(bucket_name, file_path):
 
 
 def download_file_from_gcs(bucket_name, file_path):
-    # Check if the credentials are in base64 and decode if necessary
     credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
     try:
-        # If the credentials are base64-encoded, decode them
         if credentials_json.startswith('{'):
             credentials_info = json.loads(credentials_json)
         else:
@@ -41,25 +39,21 @@ def download_file_from_gcs(bucket_name, file_path):
         print(f"Error decoding credentials: {e}")
         raise
 
-    # Load credentials and initialize the GCS client
     credentials = service_account.Credentials.from_service_account_info(credentials_info)
     client = storage.Client(credentials=credentials)
 
-    # Fetch file from GCS
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(file_path)
     data = blob.download_as_string()
     return data
 
 
-# Load the pre-trained model from GCS
 def load_model_from_gcs(bucket_name, model_file_path):
     model_data = download_file_from_gcs(bucket_name, model_file_path)
     model = joblib.load(io.BytesIO(model_data))
     return model
 
 
-# Load historical data from GCS
 def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
     data = download_file_from_gcs(bucket_name, historical_data_file_path)
     historical_data = pd.read_csv(io.StringIO(data.decode('utf-8')))
@@ -68,40 +62,30 @@ def load_historical_data_from_gcs(bucket_name, historical_data_file_path):
     return historical_data
 
 
-# Load the model and historical data
 model = load_model_from_gcs(bucket_name, model_file_path)
 historical_data = load_historical_data_from_gcs(bucket_name, historical_data_file_path)
 
 
-# Function to prepare data for a given date
 def prepare_input_data(selected_date):
     date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
 
-    # Get the day of year for the selected date
     day_of_year = date_obj.timetuple().tm_yday
 
-    # Filter historical data to get the climate data for the same day of year in the past
     historical_day_data = historical_data[historical_data['day_of_year'] == day_of_year]
 
-    # Ensure only numeric columns are used for mean calculation
     numeric_columns = historical_day_data.select_dtypes(include=[np.number])
 
-    # If no valid data remains after cleaning, use global averages
     if numeric_columns.empty:
         print(f"No valid historical data found for day of year {day_of_year}. Using global averages.")
         numeric_columns = historical_data.select_dtypes(include=[np.number])
 
-    # Calculate mean values for all relevant features
     mean_values = numeric_columns.mean()
 
-    # Function to safely get the mean value for a column, with a default if it doesn't exist
     def get_mean_value(column_name, default_value=0):
         return mean_values.get(column_name, default_value)
 
-    # Use historical AQI values for the lag features, or fall back to the mean AQI
     aqi_mean = historical_data['AQI Value'].apply(pd.to_numeric, errors='coerce').dropna().mean()
 
-    # Prepare the input data based on the simplified model's expected features
     input_data = pd.DataFrame([[
         get_mean_value('temp_mean'),
         get_mean_value('temp_max_mean'),
@@ -124,68 +108,56 @@ def prepare_input_data(selected_date):
     return input_data
 
 
-# Route for home page
 @main.route('/')
 def home():
     return render_template('index.html')
 
 
-# Route to predict AQI for a selected date
 @main.route('/predict', methods=['POST'])
 def predict():
     selected_date = request.form['selected_date']
     input_data = prepare_input_data(selected_date)
     prediction = model.predict(input_data)[0]
 
-    # Convert the prediction to a Python float before returning it as JSON
     prediction = float(prediction)
 
     return jsonify({'aqi_prediction': prediction})
 
 
-# Route to download AQI data from GCS and return as a CSV file
 @main.route('/download_aqi_data', methods=['GET'])
 def download_aqi_data():
     try:
         aqi_data = download_file_from_gcs(bucket_name, aqi_data_file_path)
 
-        # Create a BytesIO stream from the CSV data
         csv_stream = io.BytesIO(aqi_data)
 
-        # Return the CSV file as a downloadable file
         return send_file(csv_stream, mimetype='text/csv', as_attachment=True, download_name='aqi_data.csv')
     except Exception as e:
         print(f"Error downloading AQI data: {e}")
         return jsonify({"error": "Failed to download AQI data"}), 500
 
 
-# Route to download Denver weather data from GCS and return as a CSV file
 @main.route('/download_weather_data', methods=['GET'])
 def download_weather_data():
     try:
         weather_data = download_file_from_gcs(bucket_name, weather_data_file_path)
 
-        # Create a BytesIO stream from the CSV data
         csv_stream = io.BytesIO(weather_data)
 
-        # Return the CSV file as a downloadable file
         return send_file(csv_stream, mimetype='text/csv', as_attachment=True, download_name='weather_data.csv')
     except Exception as e:
         print(f"Error downloading weather data: {e}")
         return jsonify({"error": "Failed to download weather data"}), 500
 
 
-# Route to plot scatter plots and return the image
 @main.route('/plot_scatter', methods=['GET'])
 def plot_scatter_route():
     try:
         df = load_csv_from_gcs(bucket_name, historical_data_file_path)
         df['datetime'] = pd.to_datetime(df['datetime'])
 
-        # Clean non-numeric columns for plotting
         df = clean_non_numeric(df)
 
-        # Generate scatter plots
         img = plot_scatter(df)
 
         return send_file(img, mimetype='image/png')
@@ -193,17 +165,14 @@ def plot_scatter_route():
         print(f"Error generating scatter plot: {e}")
         return jsonify({"error": "Failed to generate scatter plot"}), 500
 
-# Route to plot AQI over time and return the image
 @main.route('/plot_aqi_over_time', methods=['GET'])
 def plot_aqi_over_time_route():
     try:
         df = load_csv_from_gcs(bucket_name, historical_data_file_path)
         df['datetime'] = pd.to_datetime(df['datetime'])
 
-        # Clean non-numeric columns for plotting
         df = clean_non_numeric(df)
 
-        # Generate AQI over time plot
         img = plot_aqi_over_time(df)
 
         return send_file(img, mimetype='image/png')
@@ -212,7 +181,6 @@ def plot_aqi_over_time_route():
         return jsonify({"error": "Failed to generate AQI over time plot"}), 500
 
 
-# Function to clean non-numeric columns for plotting
 def clean_non_numeric(df):
     df['AQI Value'] = pd.to_numeric(df['AQI Value'], errors='coerce')
 
@@ -224,28 +192,22 @@ def clean_non_numeric(df):
     return df
 
 
-# Function to plot scatter plots and return as BytesIO image
 def plot_scatter(df):
     variables_to_plot = ['temp_mean', 'humidity_mean', 'wind_speed_mean', 'pressure_mean', 'clouds_all_mean']
 
-    # Create a figure with subplots, 3 rows and 2 columns
     fig, axes = plt.subplots(3, 2, figsize=(14, 18))
     axes = axes.flatten()
 
-    # Iterate over each variable and create a scatter plot
     for idx, var in enumerate(variables_to_plot):
         sns.regplot(x=df[var], y=df['AQI Value'], scatter_kws={'alpha': 0.3}, line_kws={"color": "red"}, ax=axes[idx])
         axes[idx].set_title(f'AQI vs {var}')
         axes[idx].set_xlabel(var)
         axes[idx].set_ylabel('AQI Value')
 
-    # Remove the last unused subplot (6th subplot)
     fig.delaxes(axes[-1])
 
-    # Adjust layout to avoid overlapping
     plt.tight_layout()
 
-    # Save the plot to a BytesIO object
     img_stream = io.BytesIO()
     plt.savefig(img_stream, format='png')
     img_stream.seek(0)
@@ -253,7 +215,6 @@ def plot_scatter(df):
     return img_stream
 
 
-# Function to plot AQI over time and return as BytesIO image
 def plot_aqi_over_time(df):
     img_stream = io.BytesIO()
 
