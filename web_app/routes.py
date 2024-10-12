@@ -149,6 +149,8 @@ def load_aqi_data():
 def load_weather_data():
     try:
         weather_data = load_csv_from_gcs(bucket_name, weather_data_file_path)
+        print(weather_data.columns)  # Log the column names for debugging
+        print(weather_data.head())  # Log the first few rows
         # Limit the data to 100 rows for simplicity
         weather_data_json = weather_data.head(100).to_dict(orient='records')
         return jsonify(weather_data_json)

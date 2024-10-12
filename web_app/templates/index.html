@@ -74,6 +74,8 @@
                     type: 'GET',
                     url: '/load_weather_data',
                     success: function(data) {
+                        console.log("Weather data received:", data);  // Log the data for debugging
+
                         let tableHtml = '<h4>Denver Weather Data</h4><table class="table table-bordered"><thead><tr>';
                         let columns = Object.keys(data[0]);
                         columns.forEach(col => tableHtml += '<th>' + col + '</th>');
@@ -85,6 +87,10 @@
                         });
                         tableHtml += '</tbody></table>';
                         $('#weather-data').html(tableHtml);
+                    },
+                    error: function(err) {
+                        console.log("Error loading weather data:", err);
+                        $('#weather-data').html('<p>Error loading weather data.</p>');
                     }
                 });
             });
