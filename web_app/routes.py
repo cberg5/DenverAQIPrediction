@@ -193,7 +193,6 @@ def plot_scatter_route():
         print(f"Error generating scatter plot: {e}")
         return jsonify({"error": "Failed to generate scatter plot"}), 500
 
-
 # Route to plot AQI over time and return the image
 @main.route('/plot_aqi_over_time', methods=['GET'])
 def plot_aqi_over_time_route():
@@ -228,17 +227,28 @@ def clean_non_numeric(df):
 # Function to plot scatter plots and return as BytesIO image
 def plot_scatter(df):
     variables_to_plot = ['temp_mean', 'humidity_mean', 'wind_speed_mean', 'pressure_mean', 'clouds_all_mean']
+
+    # Create a figure with subplots, 3 rows and 2 columns
+    fig, axes = plt.subplots(3, 2, figsize=(14, 18))
+    axes = axes.flatten()
+
+    # Iterate over each variable and create a scatter plot
+    for idx, var in enumerate(variables_to_plot):
+        sns.regplot(x=df[var], y=df['AQI Value'], scatter_kws={'alpha': 0.3}, line_kws={"color": "red"}, ax=axes[idx])
+        axes[idx].set_title(f'AQI vs {var}')
+        axes[idx].set_xlabel(var)
+        axes[idx].set_ylabel('AQI Value')
+
+    # Remove the last unused subplot (6th subplot)
+    fig.delaxes(axes[-1])
+
+    # Adjust layout to avoid overlapping
+    plt.tight_layout()
+
+    # Save the plot to a BytesIO object
     img_stream = io.BytesIO()
-
-    for var in variables_to_plot:
-        plt.figure(figsize=(10, 6))
-        sns.regplot(x=df[var], y=df['AQI Value'], scatter_kws={'alpha': 0.3}, line_kws={"color": "red"})
-        plt.title(f'AQI vs {var}')
-        plt.xlabel(var)
-        plt.ylabel('AQI Value')
-
-        plt.savefig(img_stream, format='png')
-        img_stream.seek(0)
+    plt.savefig(img_stream, format='png')
+    img_stream.seek(0)
 
     return img_stream
 

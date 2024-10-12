@@ -72,8 +72,11 @@
             });
 
             // Load scatter plot
-            $('#show-scatter-plot').on('click', function() {
-                $('#scatter-plot-img').attr('src', '/plot_scatter').show();
+            $(document).ready(function() {
+            // Trigger Scatter Plot
+                $('#show-scatter-plot').on('click', function() {
+            window.open('/plot_scatter', '_blank');
+                });
             });
 
             // Load AQI over time plot
