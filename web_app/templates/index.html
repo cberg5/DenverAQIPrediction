@@ -22,6 +22,7 @@
             <h2>Historical Data Explorer</h2>
             <button id="download-aqi-data" class="btn btn-secondary">Download AQI Data</button>
             <button id="download-weather-data" class="btn btn-secondary">Download Denver Weather Data</button>
+            <button id="download-cleaned-data" class="btn btn-secondary">Download Combined Cleaned Data</button>
         </div>
 
         <div class="mt-5">
@@ -58,6 +59,10 @@
 
             $('#download-weather-data').on('click', function() {
                 window.open('/download_weather_data', '_blank');
+            });
+
+            $('#download-cleaned-data').on('click', function() {
+                window.open('/download_cleaned_data', '_blank');
             });
 
             $(document).ready(function() {

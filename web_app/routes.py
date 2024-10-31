@@ -149,6 +149,17 @@ def download_weather_data():
         print(f"Error downloading weather data: {e}")
         return jsonify({"error": "Failed to download weather data"}), 500
 
+@main.route('/download_cleaned_data', methods=['GET'])
+def download_cleaned_data():
+    try:
+        cleaned_data = download_file_from_gcs(bucket_name, historical_data_file_path)
+
+        csv_stream = io.BytesIO(cleaned_data)
+
+        return send_file(csv_stream, mimetype='text/csv', as_attachment=True, download_name='combined_cleaned_data.csv')
+    except Exception as e:
+        print(f"Error downloading combined cleaned data: {e}")
+        return jsonify({"error": "Failed to download combined cleaned data"}), 500
 
 @main.route('/plot_scatter', methods=['GET'])
 def plot_scatter_route():
